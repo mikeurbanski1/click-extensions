@@ -1,4 +1,21 @@
 import click
+from click.exceptions import UsageError
+from click._compat import get_text_stderr
+from click.utils import echo
+
+
+def _show_usage_error(self, file=None):
+    if file is None:
+        file = get_text_stderr()
+    color = None
+    echo('Error: %s' % self.format_message(), file=file, color=color)
+    if self.ctx is not None:
+        echo('', file=file)
+        color = self.ctx.color
+        echo(self.ctx.get_help() + '\n', file=file, color=color)
+
+
+UsageError.show = _show_usage_error
 
 
 class ClickMutex(click.Option):
@@ -13,8 +30,8 @@ class ClickMutex(click.Option):
         for mutex_opt in self.exclusive_with:
             if mutex_opt in opts:
                 if current_opt:
-                    raise click.UsageError("Illegal usage: '" + str(self.name) +
-                                           "' is mutually exclusive with " + str(mutex_opt) + ".")
+                    raise UsageError("'" + str(self.name) + "' is mutually exclusive with " + str(mutex_opt) + ".",
+                                     ctx=ctx)
                 else:
                     self.prompt = None
         return super(ClickMutex, self).handle_parse_result(ctx, opts, args)
@@ -32,32 +49,11 @@ class ClickRequiredIfPresent(click.Option):
         for req_opt in self.required_if:
             if req_opt in opts:
                 if not current_opt:
-                    raise click.UsageError("'" + str(self.name) + "' is required if '" +
-                                           str(req_opt) + "' is specified.")
+                    raise UsageError("'" + str(self.name) + "' is required if '" + str(req_opt) + "' is specified.",
+                                     ctx=ctx)
                 else:
                     self.prompt = None
         return super(ClickRequiredIfPresent, self).handle_parse_result(ctx, opts, args)
-
-
-class ClickRequireExactlyOneOf(click.Option):
-    def __init__(self, *args, **kwargs):
-        self.require_group:list = kwargs.pop("require_group")
-
-        assert self.require_group, "'require_group' parameter required"
-        super(ClickRequireExactlyOneOf, self).__init__(*args, **kwargs)
-
-    def handle_parse_result(self, ctx, opts, args):
-        print(ctx)
-        print(opts)
-        print(args)
-        count = 0
-        for req_opt in self.require_group:
-            if req_opt in opts:
-                count += 1
-                if count > 1:
-                    raise click.UsageError("Exactly one of these must be specified: " + ', '.join(self.require_group))
-
-        return super(ClickRequireExactlyOneOf, self).handle_parse_result(ctx, opts, args)
 
 
 class ClickCommaSeparatedList(click.ParamType):
