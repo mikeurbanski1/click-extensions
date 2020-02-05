@@ -63,4 +63,34 @@ class ClickCommaSeparatedList(click.ParamType):
         return value.split(',')
 
 
+class ClickKeyValue(click.ParamType):
+    name = "Key=Value"
+
+    def convert(self, value, param, ctx):
+        parts = value.split('=', 1)
+        if len(parts) < 2:
+            raise UsageError(f"Invalid argument: {value}: must be in Key=Value form.", ctx=ctx)
+        return parts[0], parts[1]
+
+
+class ClickKeyValueCSV(click.ParamType):
+    name = "Key=Value[,...]"
+
+    def convert(self, value, param, ctx):
+        values = value.split(',')
+        pairs = []
+        for v in values:
+            parts = v.split('=', 1)
+            if len(parts) < 2:
+                raise UsageError(f"Invalid argument: {v}: must be in Key=Value form.", ctx=ctx)
+            pairs.append((parts[0], parts[1]))
+        return pairs
+
+
+class ClickRequires(click.ParamType):
+    pass
+
+
 CSV = ClickCommaSeparatedList()
+KeyValue = ClickKeyValue()
+KeyValueCSV = ClickKeyValueCSV()
